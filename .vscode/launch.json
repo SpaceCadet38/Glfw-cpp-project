@@ -1,0 +1,51 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (gdb / MinGW)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/app.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "PATH",
+                    // PLACEHOLDER: same MinGW bin folder as in tasks.json.
+                    "value": "C:/mingw64/bin;${env:PATH}"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            // PLACEHOLDER: full path to gdb.exe
+            "miDebuggerPath": "C:/mingw64/bin/gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Do not stop on SIGTRAP raised by graphics drivers",
+                    "text": "handle SIGTRAP nostop noprint pass",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build debug"
+        },
+        {
+            "name": "Run Release (no debugger)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/release/app.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/mingw64/bin/gdb.exe",
+            "preLaunchTask": "build release"
+        }
+    ]
+}

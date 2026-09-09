@@ -67,3 +67,22 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# --- Project overrides -------------------------------------------------
+# This project builds with a hand-written Makefile (not CMake generated),
+# so it must be tracked despite the "Makefile" rule above.
+!Makefile
+
+# Third-party libraries dropped into external/ must be tracked even though
+# the generic archive/binary rules above would ignore them.
+!external/**/*.a
+!external/**/*.lib
+!external/**/*.dll
+!external/**/*.h
+!external/**/*.hpp
+
+# Local-only compiler path overrides
+.vscode/settings.local.json
+
+# Dear ImGui layout file written next to the exe
+imgui.ini
