@@ -11,7 +11,9 @@
         "*.inl": "cpp"
     },
 
-    // Use the MinGW make that ships next to gcc, not a system one.
+    // Only relevant if you use the optional Makefile path. Not all MinGW
+    // distributions ship mingw32-make (MSYS2 does not); the default build
+    // uses scripts\\build.bat and needs no make at all.
     "makefile.makePath": "C:/mingw64/bin/mingw32-make.exe",
 
     "C_Cpp.default.cppStandard": "c++17",
