@@ -1,8 +1,8 @@
 # C++ / GLFW / OpenGL starter — MinGW + VS Code, no CMake
 
 A ready-to-build OpenGL 3.3 project wired for **GLFW**, **Glad**, **GLM** and
-**Dear ImGui**, built with **MinGW g++/gcc only**. No CMake, and **no GNU make
-required** — the default build calls the compiler directly.
+**Dear ImGui**, built with **MinGW g++/gcc + the GNU make that ships in your
+MinGW `bin` folder**. No CMake. Works with either generation of glad.
 
 The libraries themselves are not vendored here — drop in the copies you already
 have (see [`external/README.md`](external/README.md)) and build.
@@ -15,18 +15,21 @@ four places:
 
 | File | Key |
 |---|---|
-| `scripts/build.bat` | `set "MINGW_BIN=..."` |
-| `.vscode/tasks.json` | `options.env.MINGW_BIN` |
-| `Makefile` (optional) | `MINGW_BIN ?=` |
+| `Makefile` | `MINGW_BIN ?=` |
+| `.vscode/tasks.json` | `options.env.MINGW_BIN` and `MAKE_EXE` |
 | `.vscode/launch.json` | `miDebuggerPath` and the `PATH` env entry |
 | `.vscode/c_cpp_properties.json` | `compilerPath` |
+| `scripts/build.bat` (fallback) | `set "MINGW_BIN=..."` |
 
+Paths containing spaces (`C:/Program Files/mingw64/bin`) are fine — the
+Makefile quotes them. Use forward slashes.
 You can also override it per-invocation without editing anything:
 
 ```
-set MINGW_BIN=D:\tools\mingw64\bin
-scripts\build.bat
+mingw32-make MINGW_BIN=D:/tools/mingw64/bin
 ```
+
+Or set `MINGW_BIN=` (empty) to use whatever `g++` is already on `PATH`.
 
 ## 2. Drop in the libraries
 
@@ -51,50 +54,58 @@ file (and its README) if something has not been dropped in yet.
 
 - `Ctrl+Shift+B` — build debug
 - `F5` — build then launch under GDB, breakpoints included
-- `Ctrl+Shift+P → Tasks: Run Task` — release / rebuild / run / clean
+- `Ctrl+Shift+P → Tasks: Run Task` — release / rebuild / run / clean /
+  **check setup**
 
-**From a terminal** — no make involved:
-
-```
-scripts\build.bat                 debug   -> build\debug\app.exe
-scripts\build.bat release         release -> build\release\app.exe
-scripts\build.bat debug run       build then run
-scripts\build.bat debug rebuild   force a full recompile
-scripts\build.bat clean           delete build\
-```
-
-The script is incremental in the way that matters: ImGui and glad are compiled
-**once** and reused, so only your own `src\` files are rebuilt on each run.
-The first build is the slow one. After editing a header inside `external\`,
-use `rebuild`.
-
-### Optional: the Makefile
-
-`Makefile` is included for parallel builds (`-j`) and precise header
-dependency tracking, but it is **not required** — not every MinGW distribution
-ships `mingw32-make`. Check yours with:
+**From a terminal:**
 
 ```
-dir C:\mingw64\bin\*make*
-```
-
-| Distribution | Ships make? |
-|---|---|
-| WinLibs, TDM-GCC, niXman / SourceForge builds | yes (`mingw32-make.exe`) |
-| w64devkit | yes (`make.exe`) |
-| MSYS2 `mingw-w64-x86_64-gcc` | no — install `mingw-w64-x86_64-make` |
-
-If you have it:
-
-```
-mingw32-make              # debug
+mingw32-make              # debug   -> build/debug/app.exe
 mingw32-make CONFIG=release
 mingw32-make run
 mingw32-make clean
+mingw32-make check        # report which libraries are present/missing
 mingw32-make info         # print resolved paths + detected sources
 ```
 
-VS Code exposes these as the `make: …` tasks.
+If your make is named `make.exe` rather than `mingw32-make.exe`, use that name
+and update `MAKE_EXE` in `.vscode/tasks.json`. Check with
+`dir C:\mingw64\bin\*make*`.
+
+**If a build fails oddly, run `make check` first.** Unlike a build it does not
+stop at the first problem — it lists every library that is missing:
+
+```
+--- libraries ---
+glad source : external/glad/src/gl.c
+glad header : external/glad/include/glad/gl.h
+glfw lib    : MISSING - MinGW build, not MSVC .lib
+imgui       : ok
+```
+
+### Fallback without make
+
+`scripts\build.bat` builds the same project by calling g++/gcc directly, if
+you ever need it. The Makefile is the supported path.
+
+## glad: both generations work
+
+There are two incompatible glad generators, and the download pages do not
+make the difference obvious:
+
+| | glad1 (`glad.dav1d.de`) | glad2 (`gen.glad.sh`) |
+|---|---|---|
+| Source | `src/glad.c` | `src/gl.c` |
+| Header | `<glad/glad.h>` | `<glad/gl.h>` |
+| Loader | `gladLoadGLLoader(GLADloadproc)` | `gladLoadGL(GLADloadfunc)` |
+
+Drop in **either one** — the build globs `external/glad/src/*.c` instead of
+assuming a filename, and `src/gl_loader.h` picks the right header and loader
+call via `__has_include`. `src/main.cpp` just calls
+`projectLoadGLFunctions()`.
+
+That header also fixes the include order for you (the loader must precede
+GLFW), so include `"gl_loader.h"` rather than glad and GLFW separately.
 
 ## What it does
 
@@ -109,9 +120,10 @@ are correctly wired.
 ```
 .vscode/          tasks / launch / IntelliSense config
 src/main.cpp      the application
+src/gl_loader.h   glad1/glad2 shim + correct glad-before-GLFW include order
 external/         drop your libraries here (see its README)
-scripts/build.bat the default build - g++/gcc directly, no make
-Makefile          optional build, if you have mingw32-make
+Makefile          the build
+scripts/build.bat fallback build, if make is ever unavailable
 build/<config>/   output — app.exe + .o/.d files (gitignored)
 ```
 
@@ -140,9 +152,10 @@ build/<config>/   output — app.exe + .o/.d files (gitignored)
 | Symptom | Cause |
 |---|---|
 | `g++ not found at ...` | `MINGW_BIN` still points at the placeholder |
-| `mingw32-make: not found` | Your MinGW has no make — use `scripts\build.bat` instead |
+| `mingw32-make: not found` | Your make may be `make.exe` — `dir C:\mingw64\bin\*make*` |
+| `No glad C source found` | Neither `glad.c` nor `gl.c` is in `external/glad/src/` |
 | `cannot find -lglfw3` | `libglfw3.a` missing, or it's the MSVC `.lib` instead of the MinGW `.a` |
 | `undefined reference to __imp_glfw*` | Linking a DLL import lib while `GLFW_STATIC` is defined (or 32/64-bit mismatch) |
-| `glad.h: No such file` | Glad files not copied — see `external/glad/README.md` |
+| `glad.h`/`gl.h`: No such file | Glad headers not copied — see `external/glad/README.md` |
 | Blank window / GL calls crash | `gladLoadGLLoader` not called, or glad generated for the wrong GL version |
 | IntelliSense squiggles but build works | Fix `compilerPath` in `.vscode/c_cpp_properties.json`, then `C/C++: Reset IntelliSense Database` |

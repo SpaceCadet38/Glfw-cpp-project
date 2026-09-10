@@ -1,22 +1,27 @@
 {
     "version": "2.0.0",
     "options": {
-        // PLACEHOLDER: folder containing g++.exe / gcc.exe.
-        // scripts\build.bat reads MINGW_BIN from the environment, so this one
-        // value drives every task below.
         "env": {
-            "MINGW_BIN": "C:\\mingw64\\bin"
+            // PLACEHOLDER 1: folder containing g++.exe / gcc.exe.
+            "MINGW_BIN": "C:/mingw64/bin",
+
+            // PLACEHOLDER 2: the make executable in that same folder.
+            // Most MinGW-w64 builds name it mingw32-make.exe; w64devkit and
+            // some others ship it as make.exe. Check with:
+            //     dir C:\\mingw64\\bin\\*make*
+            "MAKE_EXE": "C:/mingw64/bin/mingw32-make.exe"
         }
     },
     "tasks": [
-        // =====================================================================
-        //  Default path - g++/gcc only, no GNU make required.
-        // =====================================================================
         {
             "label": "build debug",
             "type": "shell",
-            "command": "${workspaceFolder}\\scripts\\build.bat",
-            "args": ["debug"],
+            "command": "${env:MAKE_EXE}",
+            "args": [
+                "CONFIG=debug",
+                "MINGW_BIN=${env:MINGW_BIN}",
+                "-j4"
+            ],
             "options": { "cwd": "${workspaceFolder}" },
             "group": { "kind": "build", "isDefault": true },
             "problemMatcher": ["$gcc"],
@@ -25,67 +30,67 @@
         {
             "label": "build release",
             "type": "shell",
-            "command": "${workspaceFolder}\\scripts\\build.bat",
-            "args": ["release"],
+            "command": "${env:MAKE_EXE}",
+            "args": [
+                "CONFIG=release",
+                "MINGW_BIN=${env:MINGW_BIN}",
+                "-j4"
+            ],
             "options": { "cwd": "${workspaceFolder}" },
             "group": "build",
             "problemMatcher": ["$gcc"],
             "presentation": { "reveal": "always", "panel": "shared", "clear": true }
-        },
-        {
-            "label": "rebuild debug",
-            "type": "shell",
-            "command": "${workspaceFolder}\\scripts\\build.bat",
-            "args": ["debug", "rebuild"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "group": "build",
-            "problemMatcher": ["$gcc"],
-            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
-        },
-        {
-            "label": "run debug",
-            "type": "shell",
-            "command": "${workspaceFolder}\\scripts\\build.bat",
-            "args": ["debug", "run"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$gcc"]
         },
         {
             "label": "clean",
             "type": "shell",
-            "command": "${workspaceFolder}\\scripts\\build.bat",
-            "args": ["clean"],
+            "command": "${env:MAKE_EXE}",
+            "args": ["clean", "MINGW_BIN=${env:MINGW_BIN}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         },
-
-        // =====================================================================
-        //  Optional - only if your MinGW ships mingw32-make.exe.
-        //  Check with:  dir C:\mingw64\bin\*make*
-        // =====================================================================
         {
-            "label": "make: build debug",
+            "label": "rebuild debug",
+            "dependsOrder": "sequence",
+            "dependsOn": ["clean", "build debug"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "run debug",
             "type": "shell",
-            "command": "${env:MINGW_BIN}\\mingw32-make.exe",
-            "args": ["CONFIG=debug", "MINGW_BIN=${env:MINGW_BIN}", "-j4"],
+            "command": "${env:MAKE_EXE}",
+            "args": ["run", "CONFIG=debug", "MINGW_BIN=${env:MINGW_BIN}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$gcc"]
         },
         {
-            "label": "make: build release",
+            // Reports which libraries are present and which are missing,
+            // without building. Run this first if a build fails oddly.
+            "label": "check setup",
             "type": "shell",
-            "command": "${env:MINGW_BIN}\\mingw32-make.exe",
-            "args": ["CONFIG=release", "MINGW_BIN=${env:MINGW_BIN}", "-j4"],
+            "command": "${env:MAKE_EXE}",
+            "args": ["check", "MINGW_BIN=${env:MINGW_BIN}"],
             "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": true }
         },
         {
-            "label": "make: show build config",
+            "label": "show build config",
             "type": "shell",
-            "command": "${env:MINGW_BIN}\\mingw32-make.exe",
+            "command": "${env:MAKE_EXE}",
             "args": ["info", "MINGW_BIN=${env:MINGW_BIN}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
+        },
+        {
+            // Fallback only, if make is ever unavailable.
+            "label": "no-make: build debug",
+            "type": "shell",
+            "command": "${workspaceFolder}\\scripts\\build.bat",
+            "args": ["debug"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": ["$gcc"]
         }
     ]
 }

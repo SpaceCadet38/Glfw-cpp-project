@@ -61,12 +61,37 @@ if not exist "%CXX%" (
     echo            set MINGW_BIN=D:\tools\mingw64\bin
     goto :fail
 )
-if not exist "%ROOT%\external\glad\src\glad.c" (
-    echo ERROR: external\glad\src\glad.c not found - see external\glad\README.md
+if not exist "%CC%" (
+    echo ERROR: gcc not found at "%CC%"  ^(needed to compile glad, which is C^)
     goto :fail
 )
-if not exist "%ROOT%\external\glad\include\glad\glad.h" (
-    echo ERROR: external\glad\include\glad\glad.h not found - see external\glad\README.md
+REM glad comes in two incompatible generations and the layout differs:
+REM   glad1 (glad.dav1d.de) -> src\glad.c + include\glad\glad.h
+REM   glad2 (gen.glad.sh)   -> src\gl.c   + include\glad\gl.h
+REM Accept whichever is present rather than assuming glad1.
+set "GLAD_SRC="
+if exist "%ROOT%\external\glad\src\glad.c" set "GLAD_SRC=%ROOT%\external\glad\src\glad.c"
+if not defined GLAD_SRC if exist "%ROOT%\external\glad\src\gl.c" set "GLAD_SRC=%ROOT%\external\glad\src\gl.c"
+if not defined GLAD_SRC if exist "%ROOT%\external\glad\glad.c" set "GLAD_SRC=%ROOT%\external\glad\glad.c"
+if not defined GLAD_SRC if exist "%ROOT%\external\glad\gl.c" set "GLAD_SRC=%ROOT%\external\glad\gl.c"
+if not defined GLAD_SRC (
+    echo ERROR: no glad C source found.
+    echo        Expected external\glad\src\glad.c ^(glad1^) or external\glad\src\gl.c ^(glad2^)
+    echo        See external\glad\README.md
+    goto :fail
+)
+
+set "GLAD_HDR="
+if exist "%ROOT%\external\glad\include\glad\glad.h" set "GLAD_HDR=1"
+if exist "%ROOT%\external\glad\include\glad\gl.h" set "GLAD_HDR=1"
+if not defined GLAD_HDR (
+    echo ERROR: no glad header found.
+    echo        Expected external\glad\include\glad\glad.h ^(glad1^) or ...\glad\gl.h ^(glad2^)
+    echo        See external\glad\README.md
+    goto :fail
+)
+if not exist "%ROOT%\external\glad\include\KHR\khrplatform.h" (
+    echo ERROR: external\glad\include\KHR\khrplatform.h not found - it ships with the glad header
     goto :fail
 )
 if not exist "%ROOT%\external\glfw\include\GLFW\glfw3.h" (
@@ -113,8 +138,8 @@ REM Vendored code is built with -w; its warnings are not ours to fix and
 REM would bury the ones from src\.
 
 if not exist "%OBJ%\ext_glad.o" (
-    echo [glad] glad.c
-    "%CC%" -std=c11 %CFG_FLAGS% -w %DEFINES% %INCLUDES% -c "%ROOT%\external\glad\src\glad.c" -o "%OBJ%\ext_glad.o"
+    echo [glad] %GLAD_SRC%
+    "%CC%" -std=c11 %CFG_FLAGS% -w %DEFINES% %INCLUDES% -c "%GLAD_SRC%" -o "%OBJ%\ext_glad.o"
     if errorlevel 1 goto :fail
 )
 echo "%OBJ%\ext_glad.o">>"%RSP%"

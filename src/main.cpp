@@ -6,8 +6,8 @@
 //  four libraries are wired up correctly.
 // =============================================================================
 
-#include <glad/glad.h>      // must come before GLFW
-#include <GLFW/glfw3.h>
+// Pulls in glad (either generation) and then GLFW, in the required order.
+#include "gl_loader.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -139,7 +139,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
     // Glad needs a current context before it can resolve any entry point.
-    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
+    if (!projectLoadGLFunctions())
     {
         std::fprintf(stderr, "Failed to initialise Glad\n");
         glfwDestroyWindow(window);
